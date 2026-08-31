@@ -1,0 +1,528 @@
+-- ============================================================
+-- V1__create_canteen_schema.sql
+-- ============================================================
+
+
+-- ============================================================
+-- USERS
+-- ============================================================
+
+CREATE TABLE users (
+    id              RAW(16) DEFAULT SYS_GUID() NOT NULL,
+    first_name      VARCHAR2(100) NOT NULL,
+    last_name       VARCHAR2(100),
+    email           VARCHAR2(255) NOT NULL,
+    phone_number    VARCHAR2(20),
+    password        VARCHAR2(255) NOT NULL,
+    address         VARCHAR2(1000) NOT NULL,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    status          VARCHAR2(30) DEFAULT 'ACTIVE' NOT NULL,
+    wallet_balance  NUMBER(12,2) DEFAULT 0 NOT NULL,
+
+    CONSTRAINT pk_users
+        PRIMARY KEY (id),
+
+    CONSTRAINT uq_users_email
+        UNIQUE (email),
+
+    CONSTRAINT ck_users_status
+        CHECK (
+            status IN (
+                'ACTIVE',
+                'INACTIVE',
+                'BLOCKED'
+            )
+        ),
+
+    CONSTRAINT ck_users_wallet_balance
+        CHECK (wallet_balance >= 0)
+);
+
+
+-- ============================================================
+-- USER_ROLES
+-- ============================================================
+
+CREATE TABLE user_roles (
+    user_id     RAW(16) NOT NULL,
+    roles        VARCHAR2(30) NOT NULL,
+
+    CONSTRAINT pk_user_roles
+        PRIMARY KEY (user_id, role),
+
+    CONSTRAINT fk_user_roles_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT ck_user_roles_role
+        CHECK (
+            role IN (
+                'ADMIN',
+                'OWNER',
+                'CHEF',
+                'WAITER',
+                'CUSTOMER'
+            )
+        )
+);
+
+
+-- ============================================================
+-- CANTEENS
+-- ============================================================
+
+CREATE TABLE canteens (
+    id                      RAW(16) DEFAULT SYS_GUID() NOT NULL,
+    name                    VARCHAR2(200) NOT NULL,
+    owner_id                RAW(16) NOT NULL,
+    email                   VARCHAR2(255),
+    phone_number            VARCHAR2(20),
+    canteen_url                     VARCHAR2(500),
+    created_by              RAW(16) NOT NULL,
+    created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    address                 VARCHAR2(1000) NOT NULL,
+    img_url                 VARCHAR2(500),
+    status                  VARCHAR2(30) DEFAULT 'ACTIVE' NOT NULL,
+    start_time              TIMESTAMP,
+    end_time                TIMESTAMP,
+    -- Average rating, from 0.00 to 5.00
+    rating                  NUMBER(3,2) DEFAULT 0 NOT NULL,
+    -- Number of ratings used to calculate the average
+    rating_count            NUMBER(10) DEFAULT 0 NOT NULL,
+    -- JSON array containing allowed email domains/emails.
+    -- Examples:
+    -- ["company.com", "university.edu"]
+    -- ["company.com", "john@gmail.com"]
+    -- []
+    allowed_order_domains   JSON,
+
+    CONSTRAINT pk_canteens
+        PRIMARY KEY (id),
+
+    CONSTRAINT fk_canteens_owner
+        FOREIGN KEY (owner_id)
+        REFERENCES users(id),
+
+    CONSTRAINT fk_canteens_created_by
+        FOREIGN KEY (created_by)
+        REFERENCES users(id),
+
+    CONSTRAINT ck_canteens_status
+        CHECK (
+            status IN (
+                'ACTIVE',
+                'INACTIVE',
+                'BLOCKED'
+            )
+        ),
+
+    CONSTRAINT ck_canteens_rating
+        CHECK (
+            rating >= 0
+            AND rating <= 5
+        ),
+
+    CONSTRAINT ck_canteens_rating_count
+        CHECK (
+            rating_count >= 0
+        ),
+
+    CONSTRAINT ck_canteens_allowed_domains_json
+        CHECK (
+            allowed_order_domains IS JSON
+        ),
+
+    CONSTRAINT ck_canteens_time_range
+        CHECK (
+            end_time IS NULL
+            OR start_time IS NULL
+            OR end_time > start_time
+        )
+);
+
+
+-- ============================================================
+-- CANTEEN MEMBERS
+-- ============================================================
+
+CREATE TABLE canteen_members (
+    id              RAW(16) DEFAULT SYS_GUID() NOT NULL,
+    member_id         RAW(16) NOT NULL,
+    canteen_id         RAW(16) NOT NULL,
+    inviter_id   RAW(16) NOT NULL,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    status          VARCHAR2(30) DEFAULT 'ACTIVE' NOT NULL,
+
+    CONSTRAINT pk_canteen_members
+        PRIMARY KEY (id),
+
+    CONSTRAINT fk_canteen_members_user
+        FOREIGN KEY (member_id)
+        REFERENCES users(id),
+
+    CONSTRAINT fk_canteen_members_canteen
+        FOREIGN KEY (canteen_id)
+        REFERENCES canteens(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_canteen_members_invited_by
+        FOREIGN KEY (inviter_id)
+        REFERENCES users(id),
+
+    -- CONSTRAINT uq_canteen_members_user_canteen
+    --     UNIQUE (member_id, canteen_id),
+
+    CONSTRAINT ck_canteen_members_status
+        CHECK (
+            status IN (
+                'INVITED',
+                'ACTIVE',
+                'INACTIVE',
+                'REMOVED'
+            )
+        )
+);
+
+
+-- ============================================================
+-- ITEMS
+-- ============================================================
+
+CREATE TABLE items (
+    id              RAW(16) DEFAULT SYS_GUID() NOT NULL,
+    name            VARCHAR2(200) NOT NULL,
+    description     VARCHAR2(500) NOT NULL,
+    canteen_id         RAW(16) NOT NULL,
+    type            VARCHAR2(30) NOT NULL,
+    measure         NUMBER(7,2),
+    img_url         VARCHAR2(500),
+    unit_price      NUMBER(12,2) NOT NULL,
+    discount        NUMBER(12,2) DEFAULT 0 NOT NULL,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    -- Average rating, from 0.00 to 5.00
+    rating                  NUMBER(3,2) DEFAULT 0 NOT NULL,
+    -- Number of ratings used to calculate the average
+    rating_count            NUMBER(10) DEFAULT 0 NOT NULL,
+
+    CONSTRAINT pk_items
+        PRIMARY KEY (id),
+
+    CONSTRAINT fk_items_canteen
+        FOREIGN KEY (canteen_id)
+        REFERENCES canteens(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT ck_items_type
+        CHECK (
+            type IN (
+                'FOOD',
+                'BEVERAGE',
+                'SNACK',
+                'COMBO',
+                'OTHER'
+            )
+        ),
+
+    CONSTRAINT ck_items_unit_price
+        CHECK (
+            unit_price >= 0
+        ),
+
+    CONSTRAINT ck_items_discount
+        CHECK (
+            discount >= 0
+        ),
+
+    CONSTRAINT ck_items_description_json
+        CHECK (
+            description IS JSON
+        )
+);
+
+
+-- ============================================================
+-- ORDERS
+--
+-- "orders" is used instead of "order" because ORDER is a
+-- SQL keyword.
+-- ============================================================
+
+CREATE TABLE orders (
+    id                    RAW(16) DEFAULT SYS_GUID() NOT NULL,
+    customer_id           RAW(16) NOT NULL,
+    canteen_id               RAW(16) NOT NULL,
+    status                VARCHAR2(30) DEFAULT 'PLACED' NOT NULL,
+    created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    -- Nullable as requested
+    receiver_name         VARCHAR2(200),
+    type                  VARCHAR2(30) NOT NULL,
+    selected_time_range   VARCHAR2(100),
+
+    CONSTRAINT pk_orders
+        PRIMARY KEY (id),
+
+    CONSTRAINT fk_orders_customer
+        FOREIGN KEY (customer_id)
+        REFERENCES users(id),
+
+    CONSTRAINT fk_orders_canteen
+        FOREIGN KEY (canteen_id)
+        REFERENCES canteens(id),
+
+    CONSTRAINT ck_orders_status
+        CHECK (
+            status IN (
+                'PLACED',
+                'CONFIRMED',
+                'PREPARING',
+                'READY',
+                'COMPLETED',
+                'CANCELLED'
+            )
+        ),
+
+    CONSTRAINT ck_orders_type
+        CHECK (
+            type IN (
+                'PICKUP',
+                'DELIVERY',
+                'DINE_IN'
+            )
+        )
+);
+
+
+-- ============================================================
+-- ORDER ITEMS
+--
+-- Price and discount are stored here as snapshots so that
+-- historical orders are not affected if the item's current
+-- price/discount changes later.
+-- ============================================================
+
+CREATE TABLE order_items (
+    id              RAW(16) DEFAULT SYS_GUID() NOT NULL,
+    order_id        RAW(16) NOT NULL,
+    item_id         RAW(16) NOT NULL,
+
+    -- Chef responsible for preparing this item.
+    -- Nullable because a chef may not be assigned immediately.
+    chef_id         RAW(16),
+
+    quantity        NUMBER(10,2) DEFAULT 1 NOT NULL,
+    unit_price      NUMBER(12,2) NOT NULL,
+    discount        NUMBER(12,2) DEFAULT 0 NOT NULL,
+    final_price     NUMBER(12,2) NOT NULL,
+
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+
+    CONSTRAINT pk_order_items
+        PRIMARY KEY (id),
+
+    CONSTRAINT fk_order_items_order
+        FOREIGN KEY (order_id)
+        REFERENCES orders(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_order_items_item
+        FOREIGN KEY (item_id)
+        REFERENCES items(id),
+
+    CONSTRAINT fk_order_items_chef
+        FOREIGN KEY (chef_id)
+        REFERENCES users(id),
+
+    CONSTRAINT ck_order_items_quantity
+        CHECK (
+            quantity > 0
+        ),
+
+    CONSTRAINT ck_order_items_unit_price
+        CHECK (
+            unit_price >= 0
+        ),
+
+    CONSTRAINT ck_order_items_discount
+        CHECK (
+            discount >= 0
+        ),
+
+    CONSTRAINT ck_order_items_final_price
+        CHECK (
+            final_price >= 0
+        )
+);
+
+
+-- ============================================================
+-- INVITES
+-- ============================================================
+
+CREATE TABLE invites (
+    id              RAW(16) DEFAULT SYS_GUID() NOT NULL,
+    inviter_id      RAW(16) NOT NULL,
+    invited_id      RAW(16) NOT NULL,
+    role            VARCHAR2(20) DEFAULT 'WAITER' NOT NULL,
+    status          VARCHAR2(30) DEFAULT 'PENDING' NOT NULL,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+
+    CONSTRAINT pk_invites
+        PRIMARY KEY (id),
+
+    CONSTRAINT fk_invites_inviter
+        FOREIGN KEY (inviter_id)
+        REFERENCES users(id),
+
+    CONSTRAINT fk_invites_invited
+        FOREIGN KEY (invited_id)
+        REFERENCES users(id),
+
+    CONSTRAINT ck_invites_status
+        CHECK (
+            status IN (
+                'PENDING',
+                'ACCEPTED',
+                'REJECTED',
+                'CANCELLED'
+            )
+        ),
+
+    CONSTRAINT ck_invites_role
+        CHECK (
+            status IN (
+                'OWNER',
+                'CHEF',
+                'WAITER',
+            )
+        ),
+
+    CONSTRAINT ck_invites_different_users
+        CHECK (
+            inviter_id <> invited_id
+        )
+);
+
+
+-- ============================================================
+-- INDEXES
+-- ============================================================
+
+
+-- ============================================================
+-- USERS
+-- ============================================================
+
+CREATE INDEX idx_users_status
+    ON users(status);
+
+
+-- ============================================================
+-- USER_ROLES
+-- ============================================================
+
+CREATE INDEX idx_user_roles_role
+    ON user_roles(role);
+
+
+-- ============================================================
+-- CANTEENS
+-- ============================================================
+
+CREATE INDEX idx_canteens_owner_id
+    ON canteens(owner_id);
+
+CREATE INDEX idx_canteens_created_by
+    ON canteens(created_by);
+
+CREATE INDEX idx_canteens_status
+    ON canteens(status);
+
+
+-- ============================================================
+-- CANTEEN MEMBERS
+-- ============================================================
+
+CREATE INDEX idx_canteen_members_user
+    ON canteen_members(member_id);
+
+CREATE INDEX idx_canteen_members_canteen
+    ON canteen_members(canteen_id);
+
+CREATE INDEX idx_canteen_members_invited_by
+    ON canteen_members(inviter_id);
+
+CREATE INDEX idx_canteen_members_status
+    ON canteen_members(status);
+
+
+-- ============================================================
+-- ITEMS
+-- ============================================================
+
+CREATE INDEX idx_items_canteen
+    ON items(canteen_id);
+
+CREATE INDEX idx_items_type
+    ON items(type);
+
+CREATE INDEX idx_items_canteen_type
+    ON items(canteen_id, type);
+
+
+-- ============================================================
+-- ORDERS
+-- ============================================================
+
+CREATE INDEX idx_orders_customer
+    ON orders(customer_id);
+
+CREATE INDEX idx_orders_canteen
+    ON orders(canteen_id);
+
+CREATE INDEX idx_orders_status
+    ON orders(status);
+
+CREATE INDEX idx_orders_type
+    ON orders(type);
+
+CREATE INDEX idx_orders_canteen_created
+    ON orders(canteen_id, created_at);
+
+CREATE INDEX idx_orders_customer_created
+    ON orders(customer_id, created_at);
+
+
+-- ============================================================
+-- ORDER ITEMS
+-- ============================================================
+
+CREATE INDEX idx_order_items_order
+    ON order_items(order_id);
+
+CREATE INDEX idx_order_items_item
+    ON order_items(item_id);
+
+CREATE INDEX idx_order_items_chef
+    ON order_items(chef_id);
+
+
+-- ============================================================
+-- INVITES
+-- ============================================================
+
+CREATE INDEX idx_invites_inviter
+    ON invites(inviter_id);
+
+CREATE INDEX idx_invites_invited
+    ON invites(invited_id);
+
+CREATE INDEX idx_invites_status
+    ON invites(status);
