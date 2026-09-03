@@ -35,6 +35,7 @@ import static com.project.mycanteen.entity.type.RoleType.*;
 @RequiredArgsConstructor
 @Slf4j
 @EnableWebSecurity
+@EnableMethodSecurity
 public class WebSecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
     private final HandlerExceptionResolver handlerExceptionResolver;
