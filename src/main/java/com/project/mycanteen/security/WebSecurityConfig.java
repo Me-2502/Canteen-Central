@@ -48,6 +48,10 @@ public class WebSecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/signup", "/auth/login", "/health").permitAll()
                         .requestMatchers("/admin/**").hasRole(ADMIN.name())
+                        .requestMatchers("/profile/**").hasAnyAuthority("profile:read", "profile:write")
+                        .requestMatchers("/canteens/**").hasAnyAuthority("canteen:read", "canteen:write", "menu:read", "menu:write", "order:read", "order:write")
+                        .requestMatchers("/items/**").hasAnyAuthority("menu:read", "menu:write")
+                        .requestMatchers("/orders/**").hasAnyAuthority("order:read", "order:write")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(exceptionHandlingConfigurer -> 
