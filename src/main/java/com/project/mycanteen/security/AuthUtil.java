@@ -41,6 +41,6 @@ public class AuthUtil {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-        return UUID.fromString(claims.getSubject());
+        return UUID.fromString(claims.get("userId", String.class));
     }
 }

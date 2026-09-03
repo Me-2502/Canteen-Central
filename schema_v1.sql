@@ -367,8 +367,10 @@ CREATE TABLE order_items (
 
 CREATE TABLE invites (
     id              RAW(16) DEFAULT SYS_GUID() NOT NULL,
+    canteen_id      RAW(16) NOT NULL,
     inviter_id      RAW(16) NOT NULL,
-    invited_id      RAW(16) NOT NULL,
+    invited_id      RAW(16),
+    mailid          VARCHAR2(255),
     role            VARCHAR2(20) DEFAULT 'WAITER' NOT NULL,
     status          VARCHAR2(30) DEFAULT 'PENDING' NOT NULL,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -376,6 +378,10 @@ CREATE TABLE invites (
 
     CONSTRAINT pk_invites
         PRIMARY KEY (id),
+
+    CONSTRAINT fk_invites_canteen
+        FOREIGN KEY (canteen_id)
+        REFERENCES canteens(id),
 
     CONSTRAINT fk_invites_inviter
         FOREIGN KEY (inviter_id)
@@ -397,16 +403,16 @@ CREATE TABLE invites (
 
     CONSTRAINT ck_invites_role
         CHECK (
-            status IN (
+            role IN (
                 'OWNER',
                 'CHEF',
-                'WAITER',
+                'WAITER'
             )
         ),
 
-    CONSTRAINT ck_invites_different_users
+    CONSTRAINT ck_invites_user_or_email
         CHECK (
-            inviter_id <> invited_id
+            invited_id IS NOT NULL OR mailid IS NOT NULL
         )
 );
 
@@ -518,11 +524,17 @@ CREATE INDEX idx_order_items_chef
 -- INVITES
 -- ============================================================
 
+CREATE INDEX idx_invites_canteen
+    ON invites(canteen_id);
+
 CREATE INDEX idx_invites_inviter
     ON invites(inviter_id);
 
 CREATE INDEX idx_invites_invited
     ON invites(invited_id);
+
+CREATE INDEX idx_invites_mailid
+    ON invites(mailid);
 
 CREATE INDEX idx_invites_status
     ON invites(status);

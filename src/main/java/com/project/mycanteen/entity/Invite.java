@@ -37,8 +37,16 @@ public class Invite {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
-    @JoinColumn(name = "invited_id", nullable = false, updatable = false)
+    @JoinColumn(name = "canteen_id", nullable = false)
+    private Canteen canteen;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "invited_id", nullable = true, updatable = false)
     private User invitedId;
+
+    @Column(name = "mailid")
+    private String mailid;
+
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "inviter_id", nullable = false, updatable = false)
     private User inviterId;
@@ -48,7 +56,7 @@ public class Invite {
     private RoleType role;
 
     @Enumerated(EnumType.STRING)
-    @Column
+    @Column(nullable = false)
     private InviteStatus status;
 
     @Column(name = "created_at", updatable = false)
