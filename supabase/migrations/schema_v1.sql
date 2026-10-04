@@ -2,23 +2,25 @@
 -- V1__create_canteen_schema.sql
 -- ============================================================
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 
 -- ============================================================
 -- USERS
 -- ============================================================
 
 CREATE TABLE users (
-    id              RAW(16) DEFAULT SYS_GUID() NOT NULL,
-    first_name      VARCHAR2(100) NOT NULL,
-    last_name       VARCHAR2(100),
-    email           VARCHAR2(255) NOT NULL,
-    phone_number    VARCHAR2(20),
-    password        VARCHAR2(255) NOT NULL,
-    address         VARCHAR2(1000) NOT NULL,
+    id              UUID DEFAULT gen_random_uuid() NOT NULL,
+    first_name      VARCHAR(100) NOT NULL,
+    last_name       VARCHAR(100),
+    email           VARCHAR(255) NOT NULL,
+    phone_number    VARCHAR(20),
+    password        VARCHAR(255) NOT NULL,
+    address         VARCHAR(1000) NOT NULL,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    status          VARCHAR2(30) DEFAULT 'ACTIVE' NOT NULL,
-    wallet_balance  NUMBER(12,2) DEFAULT 0 NOT NULL,
+    status          VARCHAR(30) DEFAULT 'ACTIVE' NOT NULL,
+    wallet_balance  NUMERIC(12,2) DEFAULT 0 NOT NULL,
 
     CONSTRAINT pk_users
         PRIMARY KEY (id),
@@ -45,11 +47,11 @@ CREATE TABLE users (
 -- ============================================================
 
 CREATE TABLE user_roles (
-    user_id     RAW(16) NOT NULL,
-    roles        VARCHAR2(30) NOT NULL,
+    user_id     UUID NOT NULL,
+    roles       VARCHAR(30) NOT NULL,
 
     CONSTRAINT pk_user_roles
-        PRIMARY KEY (user_id, role),
+        PRIMARY KEY (user_id, roles),
 
     CONSTRAINT fk_user_roles_user
         FOREIGN KEY (user_id)
@@ -58,7 +60,7 @@ CREATE TABLE user_roles (
 
     CONSTRAINT ck_user_roles_role
         CHECK (
-            role IN (
+            roles IN (
                 'ADMIN',
                 'OWNER',
                 'CHEF',
@@ -74,24 +76,24 @@ CREATE TABLE user_roles (
 -- ============================================================
 
 CREATE TABLE canteens (
-    id                      RAW(16) DEFAULT SYS_GUID() NOT NULL,
-    name                    VARCHAR2(200) NOT NULL,
-    owner_id                RAW(16) NOT NULL,
-    email                   VARCHAR2(255),
-    phone_number            VARCHAR2(20),
-    canteen_url                     VARCHAR2(500),
-    created_by              RAW(16) NOT NULL,
+    id                      UUID DEFAULT gen_random_uuid() NOT NULL,
+    name                    VARCHAR(200) NOT NULL,
+    owner_id                UUID NOT NULL,
+    email                   VARCHAR(255),
+    phone_number            VARCHAR(20),
+    canteen_url             VARCHAR(500),
+    created_by              UUID NOT NULL,
     created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    address                 VARCHAR2(1000) NOT NULL,
-    img_url                 VARCHAR2(500),
-    status                  VARCHAR2(30) DEFAULT 'ACTIVE' NOT NULL,
+    address                 VARCHAR(1000) NOT NULL,
+    img_url                 VARCHAR(500),
+    status                  VARCHAR(30) DEFAULT 'ACTIVE' NOT NULL,
     start_time              TIMESTAMP,
     end_time                TIMESTAMP,
     -- Average rating, from 0.00 to 5.00
-    rating                  NUMBER(3,2) DEFAULT 0 NOT NULL,
+    rating                  NUMERIC(3,2) DEFAULT 0 NOT NULL,
     -- Number of ratings used to calculate the average
-    rating_count            NUMBER(10) DEFAULT 0 NOT NULL,
+    rating_count            NUMERIC(10) DEFAULT 0 NOT NULL,
     -- JSON array containing allowed email domains/emails.
     -- Examples:
     -- ["company.com", "university.edu"]
@@ -130,11 +132,6 @@ CREATE TABLE canteens (
             rating_count >= 0
         ),
 
-    CONSTRAINT ck_canteens_allowed_domains_json
-        CHECK (
-            allowed_order_domains IS JSON
-        ),
-
     CONSTRAINT ck_canteens_time_range
         CHECK (
             end_time IS NULL
@@ -149,13 +146,13 @@ CREATE TABLE canteens (
 -- ============================================================
 
 CREATE TABLE canteen_members (
-    id              RAW(16) DEFAULT SYS_GUID() NOT NULL,
-    member_id         RAW(16) NOT NULL,
-    canteen_id         RAW(16) NOT NULL,
-    inviter_id   RAW(16) NOT NULL,
+    id              UUID DEFAULT gen_random_uuid() NOT NULL,
+    member_id       UUID NOT NULL,
+    canteen_id      UUID NOT NULL,
+    inviter_id      UUID NOT NULL,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    status          VARCHAR2(30) DEFAULT 'ACTIVE' NOT NULL,
+    status          VARCHAR(30) DEFAULT 'ACTIVE' NOT NULL,
 
     CONSTRAINT pk_canteen_members
         PRIMARY KEY (id),
@@ -193,21 +190,21 @@ CREATE TABLE canteen_members (
 -- ============================================================
 
 CREATE TABLE items (
-    id              RAW(16) DEFAULT SYS_GUID() NOT NULL,
-    name            VARCHAR2(200) NOT NULL,
-    description     VARCHAR2(500) NOT NULL,
-    canteen_id         RAW(16) NOT NULL,
-    type            VARCHAR2(30) NOT NULL,
-    measure         NUMBER(7,2),
-    img_url         VARCHAR2(500),
-    unit_price      NUMBER(12,2) NOT NULL,
-    discount        NUMBER(12,2) DEFAULT 0 NOT NULL,
+    id              UUID DEFAULT gen_random_uuid() NOT NULL,
+    name            VARCHAR(200) NOT NULL,
+    description     VARCHAR(500) NOT NULL,
+    canteen_id      UUID NOT NULL,
+    type            VARCHAR(30) NOT NULL,
+    measure         NUMERIC(7,2),
+    img_url         VARCHAR(500),
+    unit_price      NUMERIC(12,2) NOT NULL,
+    discount        NUMERIC(12,2) DEFAULT 0 NOT NULL,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     -- Average rating, from 0.00 to 5.00
-    rating                  NUMBER(3,2) DEFAULT 0 NOT NULL,
+    rating                  NUMERIC(3,2) DEFAULT 0 NOT NULL,
     -- Number of ratings used to calculate the average
-    rating_count            NUMBER(10) DEFAULT 0 NOT NULL,
+    rating_count            NUMERIC(10) DEFAULT 0 NOT NULL,
 
     CONSTRAINT pk_items
         PRIMARY KEY (id),
@@ -240,7 +237,7 @@ CREATE TABLE items (
 
     CONSTRAINT ck_items_description_json
         CHECK (
-            description IS JSON
+            description::jsonb IS NOT NULL
         )
 );
 
@@ -253,16 +250,16 @@ CREATE TABLE items (
 -- ============================================================
 
 CREATE TABLE orders (
-    id                    RAW(16) DEFAULT SYS_GUID() NOT NULL,
-    customer_id           RAW(16) NOT NULL,
-    canteen_id               RAW(16) NOT NULL,
-    status                VARCHAR2(30) DEFAULT 'PLACED' NOT NULL,
+    id                    UUID DEFAULT gen_random_uuid() NOT NULL,
+    customer_id           UUID NOT NULL,
+    canteen_id            UUID NOT NULL,
+    status                VARCHAR(30) DEFAULT 'PLACED' NOT NULL,
     created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     -- Nullable as requested
-    receiver_name         VARCHAR2(200),
-    type                  VARCHAR2(30) NOT NULL,
-    selected_time_range   VARCHAR2(100),
+    receiver_name         VARCHAR(200),
+    type                  VARCHAR(30) NOT NULL,
+    selected_time_range   VARCHAR(100),
 
     CONSTRAINT pk_orders
         PRIMARY KEY (id),
@@ -307,18 +304,18 @@ CREATE TABLE orders (
 -- ============================================================
 
 CREATE TABLE order_items (
-    id              RAW(16) DEFAULT SYS_GUID() NOT NULL,
-    order_id        RAW(16) NOT NULL,
-    item_id         RAW(16) NOT NULL,
+    id              UUID DEFAULT gen_random_uuid() NOT NULL,
+    order_id        UUID NOT NULL,
+    item_id         UUID NOT NULL,
 
     -- Chef responsible for preparing this item.
     -- Nullable because a chef may not be assigned immediately.
-    chef_id         RAW(16),
+    chef_id         UUID,
 
-    quantity        NUMBER(10,2) DEFAULT 1 NOT NULL,
-    unit_price      NUMBER(12,2) NOT NULL,
-    discount        NUMBER(12,2) DEFAULT 0 NOT NULL,
-    final_price     NUMBER(12,2) NOT NULL,
+    quantity        NUMERIC(10,2) DEFAULT 1 NOT NULL,
+    unit_price      NUMERIC(12,2) NOT NULL,
+    discount        NUMERIC(12,2) DEFAULT 0 NOT NULL,
+    final_price     NUMERIC(12,2) NOT NULL,
 
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -366,13 +363,13 @@ CREATE TABLE order_items (
 -- ============================================================
 
 CREATE TABLE invites (
-    id              RAW(16) DEFAULT SYS_GUID() NOT NULL,
-    canteen_id      RAW(16) NOT NULL,
-    inviter_id      RAW(16) NOT NULL,
-    invited_id      RAW(16),
-    mailid          VARCHAR2(255),
-    role            VARCHAR2(20) DEFAULT 'WAITER' NOT NULL,
-    status          VARCHAR2(30) DEFAULT 'PENDING' NOT NULL,
+    id              UUID DEFAULT gen_random_uuid() NOT NULL,
+    canteen_id      UUID NOT NULL,
+    inviter_id      UUID NOT NULL,
+    invited_id      UUID,
+    mailid          VARCHAR(255),
+    role            VARCHAR(20) DEFAULT 'WAITER' NOT NULL,
+    status          VARCHAR(30) DEFAULT 'PENDING' NOT NULL,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
@@ -435,7 +432,7 @@ CREATE INDEX idx_users_status
 -- ============================================================
 
 CREATE INDEX idx_user_roles_role
-    ON user_roles(role);
+    ON user_roles(roles);
 
 
 -- ============================================================
