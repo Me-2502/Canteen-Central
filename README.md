@@ -1,4 +1,4 @@
-# MyCanteen
+# Canteen Central
 
 A Spring Boot-based canteen management application with user authentication, role-based access control, canteen management, menu management, order processing, and invitation workflows.
 
