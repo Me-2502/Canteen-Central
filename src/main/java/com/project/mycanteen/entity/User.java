@@ -53,7 +53,8 @@ public class User implements UserDetails {
     @Column(name = "last_name")
     private String lastName;
 
-    @JoinColumn(nullable = false, unique = true, updatable = false)
+    @Column(name = "email", nullable = false, unique = true, updatable = false)
+    @JoinColumn()
     private String mailid;
     @Column(name = "phone_number", nullable = true)
     private String phoneNumber;

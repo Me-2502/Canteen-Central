@@ -10,6 +10,8 @@ import com.project.mycanteen.entity.type.OrderType;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -44,12 +46,14 @@ public class Order {
     @JoinColumn(name = "canteen_id", nullable = false, updatable = false)
     private Canteen canteen;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private OrderStatus status;
 
     @Column(name = "receiver_name")
     private String receiverName;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private OrderType type;
 

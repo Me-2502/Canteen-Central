@@ -48,7 +48,7 @@ public class Canteen {
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
 
-    @Column(nullable = false, unique = true)
+    @Column(name = "email", nullable = false, unique = true)
     private String mailid;
     @Column(name = "phone_number", nullable = true)
     private String phoneNumber;
