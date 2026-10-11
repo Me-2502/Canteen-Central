@@ -26,7 +26,7 @@ export default function MenuPage() {
     setParams((p) => { c === "All" ? p.delete("category") : p.set("category", c); return p; });
 
   const items = useMemo(
-    () => (data ?? []).filter((i) =>
+    () => (Array.isArray(data) ? data : []).filter((i) =>
       (category === "All" || i.category === category) &&
       `${i.name} ${i.description} ${i.category}`.toLowerCase().includes(q.toLowerCase())),
     [data, category, q]
@@ -57,7 +57,7 @@ export default function MenuPage() {
             <p className="text-xs font-bold tracking-widest text-olive">FULL MENU</p>
             <h2 className="mt-2 text-4xl font-medium">All food and drinks</h2>
           </div>
-          <span className="rounded-full border border-sage px-4 py-2 text-xs font-bold">{items.length} items</span>
+          <span className="rounded-full border border-sage px-4 py-2 text-xs font-bold">{items ? items.length : 0} items</span>
         </div>
 
         {isError && <p className="text-red-600">Could not load the menu. Check that the backend is running.</p>}
