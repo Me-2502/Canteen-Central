@@ -1,6 +1,7 @@
 package com.project.mycanteen.repository;
 
 import java.util.Date;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,6 +18,10 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     Page<Order> findByCanteenIdOrderByCreatedAtDesc(UUID canteenId, Pageable pageable);
 
+    Page<Order> findByCustomerIdAndStatusInOrderByCreatedAtDesc(UUID customerId, Collection<OrderStatus> statuses, Pageable pageable);
+
+    Page<Order> findByCanteenIdAndStatusInOrderByCreatedAtDesc(UUID canteenId, Collection<OrderStatus> statuses, Pageable pageable);
+
     Page<Order> findByCanteenIdAndCreatedAtAfterOrderByCreatedAtAsc(UUID canteenId, Date createdAfter, Pageable pageable);
 
     Page<Order> findByCanteenIdAndCreatedAtBeforeOrderByCreatedAtAsc(UUID canteenId, Date createdBefore, Pageable pageable);
@@ -28,4 +33,6 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     List<Order> findByCustomerIdOrderByCreatedAtDesc(UUID customerId);
 
     List<Order> findByCanteenIdOrderByCreatedAtDesc(UUID canteenId);
+
+    List<Order> findByCanteenIdAndCreatedAtBetween(UUID canteenId, Date from, Date to);
 }

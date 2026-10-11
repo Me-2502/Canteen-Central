@@ -1,8 +1,12 @@
 package com.project.mycanteen.service;
 
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -32,7 +36,11 @@ public class AuthService {
         );
         User user = (User) authentication.getPrincipal();
         String token = authUtil.generateAccessToken(user);
-        return new LoginResponseDto(token, user.getId());
+        Set<String> permissions = user.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(authority -> !authority.startsWith("ROLE_"))
+                .collect(Collectors.toSet());
+        return new LoginResponseDto(token, user.getId(), user.getRoles(), permissions);
     }
 
     public SignupResponseDto signup(SignupRequestDto request) {

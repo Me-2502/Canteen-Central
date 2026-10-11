@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.project.mycanteen.dto.ApiResponse;
+import com.project.mycanteen.dto.CanteenDto;
 import com.project.mycanteen.dto.OrderDto;
 import com.project.mycanteen.dto.OrderItemDto;
 import com.project.mycanteen.dto.PageResponseDto;
@@ -22,11 +24,16 @@ import com.project.mycanteen.entity.Item;
 import com.project.mycanteen.entity.Order;
 import com.project.mycanteen.entity.OrderItem;
 import com.project.mycanteen.entity.User;
+import com.project.mycanteen.entity.CanteenMember;
+import com.project.mycanteen.entity.type.CanteenMembershipStatus;
+import com.project.mycanteen.entity.type.EntityStatus;
 import com.project.mycanteen.entity.type.OrderStatus;
 import com.project.mycanteen.entity.type.OrderType;
+import com.project.mycanteen.entity.type.RoleType;
 import com.project.mycanteen.error.BadRequestException;
 import com.project.mycanteen.error.ForbiddenException;
 import com.project.mycanteen.error.ResourceNotFoundException;
+import com.project.mycanteen.repository.CanteenMemberRepository;
 import com.project.mycanteen.repository.CanteenRepository;
 import com.project.mycanteen.repository.ItemRepository;
 import com.project.mycanteen.repository.OrderItemRepository;
@@ -44,6 +51,12 @@ public class OrderService {
     private final CanteenRepository canteenRepository;
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
+    private final CanteenMemberRepository canteenMemberRepository;
+
+    /** Orders still being worked on; the rest (completed or cancelled) are previous orders. */
+    private static final Set<OrderStatus> ACTIVE_STATUSES =
+            Set.of(OrderStatus.PLACED, OrderStatus.CONFIRMED, OrderStatus.PREPARING, OrderStatus.READY);
+    private static final Set<OrderStatus> PAST_STATUSES = Set.of(OrderStatus.COMPLETED, OrderStatus.CANCELLED);
 
     @Transactional
     public List<OrderDto> placeOrder(UUID customerId, PlaceOrderRequestDto request) {
@@ -120,36 +133,49 @@ public class OrderService {
         return createdOrders;
     }
 
+    /** @param active true for current orders, false for previous ones, null for all */
     @Transactional(readOnly = true)
-    public PageResponseDto<OrderDto> getCustomerOrders(UUID customerId, int page, int size) {
+    public PageResponseDto<OrderDto> getCustomerOrders(UUID customerId, Boolean active, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<Order> orders = orderRepository.findByCustomerIdOrderByCreatedAtDesc(customerId, pageable);
-        return PageResponseDto.<OrderDto>builder()
-                .content(orders.getContent().stream().map(this::toDto).toList())
-                .page(orders.getNumber())
-                .size(orders.getSize())
-                .totalElements(orders.getTotalElements())
-                .totalPages(orders.getTotalPages())
-                .last(orders.isLast())
-                .build();
+        Page<Order> orders = active == null
+                ? orderRepository.findByCustomerIdOrderByCreatedAtDesc(customerId, pageable)
+                : orderRepository.findByCustomerIdAndStatusInOrderByCreatedAtDesc(customerId, statusesFor(active), pageable);
+        return toPageResponse(orders);
+    }
+
+    /** @param active true for current orders, false for previous ones, null for all */
+    @Transactional(readOnly = true)
+    public PageResponseDto<OrderDto> getCanteenOrders(User user, UUID canteenId, Boolean active, int page, int size) {
+        requireCanteenStaff(user, canteenId);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Order> orders = active == null
+                ? orderRepository.findByCanteenIdOrderByCreatedAtDesc(canteenId, pageable)
+                : orderRepository.findByCanteenIdAndStatusInOrderByCreatedAtDesc(canteenId, statusesFor(active), pageable);
+        return toPageResponse(orders);
+    }
+
+    /** Canteens whose orders the user may see and update: every active canteen for admins, owned ones for owners, active memberships for staff. */
+    @Transactional(readOnly = true)
+    public List<CanteenDto> getManagedCanteens(User user) {
+        List<Canteen> canteens;
+        if (user.getRoles().contains(RoleType.ADMIN)) {
+            canteens = canteenRepository.findByStatus(EntityStatus.ACTIVE);
+        } else {
+            canteens = new ArrayList<>(canteenRepository.findByOwnerId(user.getId()));
+            canteenMemberRepository.findByMemberIdAndStatus(user.getId(), CanteenMembershipStatus.ACTIVE).stream()
+                    .map(CanteenMember::getCanteen)
+                    .filter(c -> canteens.stream().noneMatch(o -> o.getId().equals(c.getId())))
+                    .forEach(canteens::add);
+        }
+        return canteens.stream()
+                .sorted(Comparator.comparing(Canteen::getName, String.CASE_INSENSITIVE_ORDER))
+                .map(c -> CanteenDto.builder().id(c.getId()).name(c.getName()).build())
+                .toList();
     }
 
     @Transactional(readOnly = true)
-    public PageResponseDto<OrderDto> getCanteenOrders(UUID canteenId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Order> orders = orderRepository.findByCanteenIdOrderByCreatedAtDesc(canteenId, pageable);
-        return PageResponseDto.<OrderDto>builder()
-                .content(orders.getContent().stream().map(this::toDto).toList())
-                .page(orders.getNumber())
-                .size(orders.getSize())
-                .totalElements(orders.getTotalElements())
-                .totalPages(orders.getTotalPages())
-                .last(orders.isLast())
-                .build();
-    }
-
-    @Transactional(readOnly = true)
-    public PageResponseDto<OrderDto> getHotOrders(UUID canteenId, int page, int size) {
+    public PageResponseDto<OrderDto> getHotOrders(User user, UUID canteenId, int page, int size) {
+        requireCanteenStaff(user, canteenId);
         Date now = new Date();
         Date twoHoursAgo = new Date(now.getTime() - (2L * 60 * 60 * 1000));
         Pageable pageable = PageRequest.of(page, size);
@@ -158,7 +184,8 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponseDto<OrderDto> getUpcomingOrders(UUID canteenId, int page, int size) {
+    public PageResponseDto<OrderDto> getUpcomingOrders(User user, UUID canteenId, int page, int size) {
+        requireCanteenStaff(user, canteenId);
         Date now = new Date();
         Date twoHoursAgo = new Date(now.getTime() - (2L * 60 * 60 * 1000));
         Pageable pageable = PageRequest.of(page, size);
@@ -167,19 +194,36 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public OrderDto getOrder(UUID orderId) {
+    public OrderDto getOrder(User user, UUID orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", orderId));
+        if (!isCustomerOf(user, order) && !isCanteenStaff(user, order.getCanteen().getId())) {
+            throw new ForbiddenException("You do not have access to this order.");
+        }
         return toDto(order);
     }
 
     @Transactional
-    public OrderDto updateOrderStatus(UUID orderId, OrderStatus status) {
+    public OrderDto updateOrderStatus(User user, UUID orderId, OrderStatus status) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", orderId));
 
         if (status == null) {
             throw new BadRequestException("Order status is required.");
+        }
+
+        // Canteen staff can move an order through any status; customers can only cancel their own order before the canteen confirms it
+        if (!isCanteenStaff(user, order.getCanteen().getId())) {
+            if (!isCustomerOf(user, order)) {
+                throw new ForbiddenException("You do not have access to this order.");
+            }
+            if (status != OrderStatus.CANCELLED || order.getStatus() != OrderStatus.PLACED) {
+                throw new ForbiddenException("You can only cancel an order before the canteen confirms it.");
+            }
+        }
+
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new BadRequestException("Cancelled order cannot be changed.");
         }
 
         if (status == OrderStatus.CANCELLED && order.getStatus() == OrderStatus.COMPLETED) {
@@ -192,13 +236,16 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderDto rateOrder(UUID orderId, int rating) {
+    public OrderDto rateOrder(User user, UUID orderId, int rating) {
         if (rating < 1 || rating > 5) {
             throw new BadRequestException("Rating must be between 1 and 5.");
         }
 
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", orderId));
+        if (!isCustomerOf(user, order)) {
+            throw new ForbiddenException("Only the customer who placed the order can rate it.");
+        }
         if (order.getStatus() != OrderStatus.COMPLETED) {
             throw new BadRequestException("Only completed orders may be rated.");
         }
@@ -217,6 +264,27 @@ public class OrderService {
 
         order.setUpdatedAt(new Date());
         return toDto(orderRepository.save(order));
+    }
+
+    private static Set<OrderStatus> statusesFor(boolean active) {
+        return active ? ACTIVE_STATUSES : PAST_STATUSES;
+    }
+
+    private static boolean isCustomerOf(User user, Order order) {
+        return order.getCustomer() != null && order.getCustomer().getId().equals(user.getId());
+    }
+
+    /** Admins, the canteen's owner and its active members (chefs, waiters, ...) work on its orders. */
+    private boolean isCanteenStaff(User user, UUID canteenId) {
+        return user.getRoles().contains(RoleType.ADMIN)
+                || canteenRepository.existsByIdAndOwnerId(canteenId, user.getId())
+                || canteenMemberRepository.existsByCanteenIdAndMemberIdAndStatus(canteenId, user.getId(), CanteenMembershipStatus.ACTIVE);
+    }
+
+    private void requireCanteenStaff(User user, UUID canteenId) {
+        if (!isCanteenStaff(user, canteenId)) {
+            throw new ForbiddenException("You do not have access to this canteen's orders.");
+        }
     }
 
     private PageResponseDto<OrderDto> toPageResponse(Page<Order> orders) {

@@ -1,14 +1,110 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
+/* `dark:` utilities follow the .dark class on <html> (set by the theme toggle) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Theme tokens. Components should use these so they work in both themes.
+   In dark mode, .beige-surface switches back to the light tokens so beige cards stay readable. */
+:root, .dark .beige-surface {
+  --background: #ffffff;
+  --foreground: #243a30;
+  --card: #ffffff;
+  --card-foreground: #243a30;
+  --primary: #243a30;
+  --primary-foreground: #ffffff;
+  --secondary: #c9d6bc;
+  --secondary-foreground: #243a30;
+  --muted: #f1ead8;
+  --muted-foreground: #525252;
+  --accent: #e4ebdc;
+  --accent-foreground: #243a30;
+  --destructive: #dc2626;
+  --border: #c9d6bc;
+  --input: #c9d6bc;
+  --ring: #5a6638;
+  --olive: #5a6638;
+  /* Chart series, from the brand greens out to warm accents */
+  --chart-1: #243a30;
+  --chart-2: #6b7a3f;
+  --chart-3: #9db58a;
+  --chart-4: #c79a4b;
+  --chart-5: #b5654a;
+  color-scheme: light;
+}
+
+.dark {
+  --background: #0f1713;
+  --foreground: #e7eee0;
+  --card: #17221c;
+  --card-foreground: #e7eee0;
+  --primary: #c9d6bc;
+  --primary-foreground: #17221c;
+  --secondary: #2c3d33;
+  --secondary-foreground: #e7eee0;
+  --muted: #1d2a23;
+  --muted-foreground: #a3b1a7;
+  --accent: #26352d;
+  --accent-foreground: #e7eee0;
+  --destructive: #f87171;
+  --border: #2f4238;
+  --input: #3a4f44;
+  --ring: #c9d6bc;
+  --olive: #b5c48a;
+  --chart-1: #c9d6bc;
+  --chart-2: #b5c48a;
+  --chart-3: #6f9a7e;
+  --chart-4: #dcb874;
+  --chart-5: #e08e6f;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-olive: var(--olive);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+}
+
+/* Fixed brand colours, used for the green bands that look the same in both themes */
 @theme {
   --color-forest: #243a30;
   --color-sage: #c9d6bc;
   --color-cream: #f1ead8;
-  --color-olive: #5a6638;
   --font-sans: "Helvetica Neue", Arial, system-ui, sans-serif;
 }
 
-body { @apply bg-white text-forest antialiased; }
+body { @apply bg-background text-foreground antialiased transition-colors; }
+
+/* Cards and the search bar: plain card colour in light mode, beige in dark mode */
+.beige-surface { background-color: var(--card); }
+.dark .beige-surface { background-color: var(--color-cream); color: var(--foreground); }
+
+/* Horizontal scrollers (e.g. the menu filter chips on phones) without a visible scrollbar */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

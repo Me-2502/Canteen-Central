@@ -27,6 +27,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.io.IOException;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 // import static com.project.mycanteen.entity.type.PermissionType.*;
 import static com.project.mycanteen.entity.type.RoleType.*;
@@ -40,16 +46,22 @@ public class WebSecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
     private final HandlerExceptionResolver handlerExceptionResolver;
 
+    // Comma-separated list of frontend origins allowed to call the API
+    @Value("${app.cors.allowed-origins:http://localhost:5173}")
+    private List<String> allowedOrigins;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
                 .csrf(csrfConfig -> csrfConfig.disable())
+                .cors(Customizer.withDefaults())
                 .sessionManagement(sessionConfig ->
                         sessionConfig.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/signup", "/auth/login", "/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/public/**").permitAll()
                         .requestMatchers("/admin/**").hasRole(ADMIN.name())
+                        .requestMatchers("/owner/**").hasRole(OWNER.name())
                         .requestMatchers("/profile/**").hasAnyAuthority("profile:read", "profile:write")
                         .requestMatchers("/canteens/**").hasAnyAuthority("canteen:read", "canteen:write", "menu:read", "menu:write", "order:read", "order:write")
                         .requestMatchers("/items/**").hasAnyAuthority("menu:read", "menu:write")
@@ -64,5 +76,17 @@ public class WebSecurityConfig {
                 .httpBasic(basic -> basic.disable());
         System.out.println("========== WEB SECURITY CONFIG LOADED ==========");
         return httpSecurity.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(allowedOrigins);
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 }

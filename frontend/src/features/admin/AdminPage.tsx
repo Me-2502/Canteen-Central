@@ -1,39 +1,39 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
-import { api } from "@/lib/api";
-import { useMenu } from "@/features/menu/useMenu";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Pagination } from "@/components/shared/Pagination";
+import { useAuthStore } from "@/features/auth/authStore";
+import { useCanteens, useOwnedCanteens } from "@/features/canteens/useCanteens";
 
+/** Entry point for managers: pick a canteen to open its manager view. Admins see every canteen, owners only their own. */
 export default function AdminPage() {
-  const { data = [], isLoading } = useMenu();
-  const qc = useQueryClient();
-  const remove = useMutation({
-    mutationFn: (id: number) => api.delete(`/menu/${id}`),
-    onSuccess: () => { toast.success("Item deleted"); qc.invalidateQueries({ queryKey: ["menu"] }); },
-    onError: () => toast.error("Could not delete the item."),
-  });
+  const isAdmin = useAuthStore((s) => s.user?.roles.includes("ADMIN") ?? false);
+  const [page, setPage] = useState(0);
+  const all = useCanteens("", page);
+  const owned = useOwnedCanteens(!isAdmin);
+
+  const { isLoading, isError } = isAdmin ? all : owned;
+  const canteens = isAdmin ? all.data?.content : owned.data;
 
   return (
     <div className="pt-10">
-      <h1 className="mb-6 text-4xl font-medium">Manage menu</h1>
+      <h1 className="mb-6 text-4xl font-medium">{isAdmin ? "Manage canteens" : "Your canteens"}</h1>
       {isLoading && <p>Loading...</p>}
-      <table className="w-full overflow-hidden rounded-2xl border border-sage text-left text-sm">
-        <thead className="bg-cream"><tr>
-          <th className="p-3">Name</th><th className="p-3">Category</th><th className="p-3">Price</th><th className="p-3" />
-        </tr></thead>
-        <tbody>
-          {data.map((i) => (
-            <tr key={i.id} className="border-t border-sage/60">
-              <td className="p-3 font-semibold">{i.name}</td>
-              <td className="p-3">{i.category}</td>
-              <td className="p-3">${i.price.toFixed(2)}</td>
-              <td className="p-3 text-right">
-                <button aria-label={`Delete ${i.name}`} onClick={() => remove.mutate(i.id)}><Trash2 size={16} /></button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {isError && <p className="text-destructive">Could not load the canteens.</p>}
+      {!isLoading && !isError && canteens?.length === 0 && (
+        <p className="text-muted-foreground">You don't own any canteens yet.</p>
+      )}
+
+      {!!canteens?.length && <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border">
+        {canteens.map((c) => (
+          <li key={c.id}>
+            <Link to={`/canteens/${c.id}`} className="flex items-center justify-between p-4 hover:bg-muted">
+              <span className="font-semibold">{c.name}</span>
+              <span className="text-sm text-muted-foreground">{c.address}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>}
+      {isAdmin && <Pagination page={page} totalPages={all.data?.totalPages ?? 0} onChange={setPage} />}
     </div>
   );
 }

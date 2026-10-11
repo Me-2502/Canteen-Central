@@ -24,5 +24,7 @@ public interface CanteenRepository extends JpaRepository<Canteen, UUID> {
 
     List<Canteen> findByOwnerId(UUID ownerId);
 
+    boolean existsByIdAndOwnerId(UUID id, UUID ownerId);
+
     List<Canteen> findByStatus(EntityStatus status);
 }

@@ -20,4 +20,8 @@ public interface CanteenMemberRepository extends JpaRepository<CanteenMember, UU
     List<CanteenMember> findByMemberId(UUID memberId);
 
     List<CanteenMember> findByCanteenIdAndStatus(UUID canteenId, CanteenMembershipStatus status);
+
+    List<CanteenMember> findByMemberIdAndStatus(UUID memberId, CanteenMembershipStatus status);
+
+    boolean existsByCanteenIdAndMemberIdAndStatus(UUID canteenId, UUID memberId, CanteenMembershipStatus status);
 }

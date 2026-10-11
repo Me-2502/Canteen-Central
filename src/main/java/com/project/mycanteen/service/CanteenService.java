@@ -116,7 +116,7 @@ public class CanteenService {
     @Transactional
     public CanteenDto updateCanteen(UUID canteenId, CanteenDto request) {
         Canteen canteen = findCanteen(canteenId);
-        ensureCanteenAccess(canteen, RoleType.OWNER, RoleType.ADMIN);
+        ensureCanteenAccess(canteen);
 
         if (request.getName() != null) canteen.setName(request.getName());
         if (request.getMailid() != null) canteen.setMailid(request.getMailid());
@@ -140,7 +140,7 @@ public class CanteenService {
     @Transactional
     public ItemDto addItem(UUID canteenId, ItemDto request) {
         Canteen canteen = findCanteen(canteenId);
-        ensureCanteenAccess(canteen, RoleType.OWNER, RoleType.ADMIN);
+        ensureCanteenAccess(canteen);
 
         Item item = Item.builder()
                 .name(request.getName())
@@ -164,7 +164,7 @@ public class CanteenService {
     public ItemDto updateItem(UUID canteenId, UUID itemId, ItemDto request) {
         Item item = itemRepository.findByIdAndCanteenId(itemId, canteenId)
                 .orElseThrow(() -> new ResourceNotFoundException("Item", itemId));
-        ensureCanteenAccess(item.getCanteen(), RoleType.OWNER, RoleType.ADMIN);
+        ensureCanteenAccess(item.getCanteen());
 
         if (request.getName() != null) item.setName(request.getName());
         if (request.getDescription() != null) item.setDescription(request.getDescription());
@@ -181,14 +181,14 @@ public class CanteenService {
     public void deleteItem(UUID canteenId, UUID itemId) {
         Item item = itemRepository.findByIdAndCanteenId(itemId, canteenId)
                 .orElseThrow(() -> new ResourceNotFoundException("Item", itemId));
-        ensureCanteenAccess(item.getCanteen(), RoleType.OWNER, RoleType.ADMIN);
+        ensureCanteenAccess(item.getCanteen());
         itemRepository.delete(item);
     }
 
     @Transactional(readOnly = true)
     public List<CanteenMember> getMembers(UUID canteenId) {
         Canteen canteen = findCanteen(canteenId);
-        ensureCanteenAccess(canteen, RoleType.OWNER, RoleType.ADMIN);
+        ensureCanteenAccess(canteen);
         return canteenMemberRepository.findByCanteenId(canteenId);
     }
 
@@ -205,13 +205,13 @@ public class CanteenService {
                 .orElseThrow(() -> new ResourceNotFoundException("Canteen", canteenId));
     }
 
-    private void ensureCanteenAccess(Canteen canteen, RoleType... allowedRoles) {
+    // Admins can manage every canteen; anyone else only the canteens they own
+    private void ensureCanteenAccess(Canteen canteen) {
         User currentUser = getCurrentUser();
         boolean isAdmin = currentUser.getRoles().contains(RoleType.ADMIN);
         boolean isOwner = Objects.equals(canteen.getOwner().getId(), currentUser.getId());
-        boolean hasAllowedRole = currentUser.getRoles().stream().anyMatch(role -> List.of(allowedRoles).contains(role));
 
-        if (!isAdmin && !isOwner && !hasAllowedRole) {
+        if (!isAdmin && !isOwner) {
             throw new ForbiddenException("You do not have permission to manage this canteen.");
         }
     }

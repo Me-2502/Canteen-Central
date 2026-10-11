@@ -5,26 +5,21 @@ import { Eye, EyeOff, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Field } from "@/components/shared/Field";
+import { getErrorMessage } from "@/lib/api";
 import { useLogin, useSignup } from "./useAuth";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email"),
   password: z.string().min(6, "At least 6 characters"),
 });
-const signupSchema = loginSchema.extend({ username: z.string().min(3, "At least 3 characters") });
+const signupSchema = loginSchema.extend({
+  firstName: z.string().min(2, "At least 2 characters").max(50),
+  lastName: z.string().max(50).optional(),
+});
 
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
-  return (
-    <label className="block space-y-1.5 text-sm font-semibold">
-      <span className="pl-1">{label}</span>
-      {children}
-      {error && <span className="block pl-1 text-xs font-normal text-red-600">{error}</span>}
-    </label>
-  );
-}
-
-const inputCls = "h-12 rounded-full border-sage px-5 font-normal";
-const submitCls = "h-12 w-full rounded-full bg-forest text-white hover:bg-forest/90";
+const inputCls = "h-12 rounded-full border-border px-5 font-normal";
+const submitCls = "h-12 w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90";
 
 function PasswordInput(props: React.ComponentProps<typeof Input>) {
   const [show, setShow] = useState(false);
@@ -45,14 +40,14 @@ export function LoginForm() {
     useForm<z.infer<typeof loginSchema>>({ resolver: zodResolver(loginSchema) });
 
   return (
-    <form onSubmit={handleSubmit((v) => login.mutate(v))} className="space-y-4">
+    <form onSubmit={handleSubmit((v) => login.mutate({ mailid: v.email, password: v.password }))} className="space-y-4">
       <Field label="Email address" error={errors.email?.message}>
         <Input {...register("email")} placeholder="you@example.com" className={inputCls} />
       </Field>
       <Field label="Password" error={errors.password?.message}>
         <PasswordInput {...register("password")} placeholder="Enter your password" />
       </Field>
-      {login.isError && <p className="text-sm text-red-600">Invalid email or password.</p>}
+      {login.isError && <p className="text-sm text-destructive">Invalid email or password.</p>}
       <Button disabled={login.isPending} className={submitCls}>
         {login.isPending ? "Logging in..." : "Log in to your account"} <ArrowRight size={16} />
       </Button>
@@ -66,17 +61,25 @@ export function SignupForm() {
     useForm<z.infer<typeof signupSchema>>({ resolver: zodResolver(signupSchema) });
 
   return (
-    <form onSubmit={handleSubmit((v) => signup.mutate(v))} className="space-y-4">
-      <Field label="Username" error={errors.username?.message}>
-        <Input {...register("username")} placeholder="jiya123" className={inputCls} />
-      </Field>
+    <form onSubmit={handleSubmit(({ email, lastName, ...rest }) =>
+      signup.mutate({ ...rest, mailid: email, lastName: lastName || undefined }))} className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="First name" error={errors.firstName?.message}>
+          <Input {...register("firstName")} placeholder="Jiya" className={inputCls} />
+        </Field>
+        <Field label="Last name" error={errors.lastName?.message}>
+          <Input {...register("lastName")} placeholder="Sharma" className={inputCls} />
+        </Field>
+      </div>
       <Field label="Email address" error={errors.email?.message}>
         <Input {...register("email")} placeholder="you@example.com" className={inputCls} />
       </Field>
       <Field label="Password" error={errors.password?.message}>
         <PasswordInput {...register("password")} placeholder="Create a password" />
       </Field>
-      {signup.isError && <p className="text-sm text-red-600">Could not create account. Try another email.</p>}
+      {signup.isError && (
+        <p className="text-sm text-destructive">{getErrorMessage(signup.error, "Could not create account. Try another email.")}</p>
+      )}
       <Button disabled={signup.isPending} className={submitCls}>
         {signup.isPending ? "Creating account..." : "Create your account"} <ArrowRight size={16} />
       </Button>

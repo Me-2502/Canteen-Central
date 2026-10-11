@@ -17,6 +17,6 @@ export const useAuthStore = create<AuthState>()(
       setSession: (token, user) => set({ token, user }),
       clearSession: () => set({ token: null, user: null }),
     }),
-    { name: "canteen-auth" }
+    { name: "canteen-session" }
   )
 );

@@ -1,24 +1,41 @@
 import { useMutation } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuthStore } from "./authStore";
-import type { AuthResponse } from "./types";
+import { safeRedirect } from "./useRequireAuth";
+import type { LoginRequest, LoginResponse, SignupRequest } from "./types";
 
-function useAuthMutation<T>(endpoint: string) {
+function useStartSession() {
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  return (email: string, { jwt, userId, roles, permissions }: LoginResponse) => {
+    setSession(jwt, { id: userId, email, roles, permissions });
+    navigate(safeRedirect(params.get("redirect")), { replace: true });
+  };
+}
+
+const login = async (data: LoginRequest) => (await api.post<LoginResponse>("/auth/login", data)).data;
+
+export function useLogin() {
+  const startSession = useStartSession();
   return useMutation({
-    mutationFn: async (data: T) => (await api.post<AuthResponse>(endpoint, data)).data,
-    onSuccess: ({ token, user }) => {
-      setSession(token, user);
-      navigate(user.role === "CUSTOMER" ? "/menu" : "/admin");
-    },
+    mutationFn: login,
+    onSuccess: (res, vars) => startSession(vars.mailid, res),
   });
 }
 
-export const useLogin = () => useAuthMutation<{ email: string; password: string }>("/auth/login");
-export const useSignup = () =>
-  useAuthMutation<{ username: string; email: string; password: string }>("/auth/signup");
+/** Signup does not return a token, so we log in straight after creating the account. */
+export function useSignup() {
+  const startSession = useStartSession();
+  return useMutation({
+    mutationFn: async (data: SignupRequest) => {
+      await api.post("/auth/signup", { ...data, roles: ["CUSTOMER"] });
+      return login({ mailid: data.mailid, password: data.password });
+    },
+    onSuccess: (res, vars) => startSession(vars.mailid, res),
+  });
+}
 
 export function useLogout() {
   const clearSession = useAuthStore((s) => s.clearSession);

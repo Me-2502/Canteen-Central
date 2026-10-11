@@ -8,8 +8,8 @@ export default function HomePage() {
         className="max-w-3xl text-6xl font-medium leading-[1.05] tracking-tight">
         Lunch, made fresh and ready when you are.
       </motion.h1>
-      <p className="mt-6 max-w-xl text-lg text-neutral-600">Browse today's menu, add dishes to your bag and pick up in minutes.</p>
-      <Link to="/menu" className="mt-10 inline-block rounded-full bg-forest px-8 py-4 font-semibold text-white">Browse the menu</Link>
+      <p className="mt-6 max-w-xl text-lg text-muted-foreground">Browse today's menu, add dishes to your bag and pick up in minutes.</p>
+      <Link to="/menu" className="mt-10 inline-block rounded-full bg-primary px-8 py-4 font-semibold text-primary-foreground">Browse the menu</Link>
     </section>
   );
 }

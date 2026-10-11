@@ -2,8 +2,8 @@ package com.project.mycanteen.entity.type;
 
 public enum OrderStatus {
     PLACED,
+    PREPARING,
     CONFIRMED,
-    PREPARED,
     READY,
     COMPLETED,
     CANCELLED

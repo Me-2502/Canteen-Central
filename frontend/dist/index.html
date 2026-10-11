@@ -4,10 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Canteen Central</title>
-    <script type="module" crossorigin src="/assets/index-D8m96JVf.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DGNRWNyr.css">
+    <script>
+      // Apply the saved theme before the app renders, so the page never flashes the wrong theme
+      try {
+        var saved = JSON.parse(localStorage.getItem("canteen-theme") || "null");
+        var theme = saved && saved.state ? saved.state.theme : null;
+        if (theme === "dark" || (!theme && matchMedia("(prefers-color-scheme: dark)").matches)) {
+          document.documentElement.classList.add("dark");
+        }
+      } catch (e) {}
+    </script>
+    <script type="module" crossorigin src="/assets/index-CDmyxRLr.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DkBqn2xL.css">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"></div>
   </body>
 </html>

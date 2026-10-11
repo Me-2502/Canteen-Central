@@ -1,15 +1,15 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { MenuItem } from "@/features/menu/types";
+import type { Item } from "@/features/menu/types";
 
-export interface CartLine { item: MenuItem; qty: number }
+export interface CartLine { item: Item; qty: number }
 
 interface CartState {
   items: CartLine[];
   open: boolean;
   setOpen: (open: boolean) => void;
-  add: (item: MenuItem) => void;
-  updateQty: (id: number, delta: number) => void;
+  add: (item: Item) => void;
+  updateQty: (id: string, delta: number) => void;
   clear: () => void;
   total: () => number;
 }
@@ -36,8 +36,8 @@ export const useCartStore = create<CartState>()(
             .filter((l) => l.qty > 0),
         })),
       clear: () => set({ items: [] }),
-      total: () => get().items.reduce((sum, l) => sum + l.item.price * l.qty, 0),
+      total: () => get().items.reduce((sum, l) => sum + l.item.finalPrice * l.qty, 0),
     }),
-    { name: "canteen-bag", partialize: (s) => ({ items: s.items }) }
+    { name: "canteen-cart", partialize: (s) => ({ items: s.items }) }
   )
 );

@@ -6,8 +6,10 @@ import { RoleRoute } from "@/routes/guards";
 import HomePage from "@/pages/HomePage";
 import MenuPage from "@/pages/MenuPage";
 import AuthPage from "@/pages/AuthPage";
+import CanteenPage from "@/pages/CanteenPage";
+import ItemPage from "@/pages/ItemPage";
+import OrdersPage from "@/pages/OrdersPage";
 import AdminPage from "@/features/admin/AdminPage";
-import OwnerPage from "@/features/owner/OwnerPage";
 
 function Layout() {
   return (
@@ -27,13 +29,22 @@ const router = createBrowserRouter([
     children: [
       { path: "/", element: <HomePage /> },
       { path: "/menu", element: <MenuPage /> },
+      { path: "/canteens/:canteenId", element: <CanteenPage /> },
+      { path: "/items/:itemId", element: <ItemPage /> },
+      {
+        element: <RoleRoute />,
+        children: [{ path: "/orders", element: <OrdersPage /> }],
+      },
       {
         element: <RoleRoute allow={["ADMIN", "OWNER"]} />,
-        children: [{ path: "/admin", element: <AdminPage /> }],
+        children: [{ path: "/canteens", element: <AdminPage /> }],
       },
       {
         element: <RoleRoute allow={["OWNER"]} />,
-        children: [{ path: "/owner", element: <OwnerPage /> }],
+        children: [
+          // Lazy so recharts only downloads for owners
+          { path: "/analytics", lazy: async () => ({ Component: (await import("@/pages/AnalyticsPage")).default }) },
+        ],
       },
     ],
   },

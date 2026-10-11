@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Canteen Central</title>
+    <script>
+      // Apply the saved theme before the app renders, so the page never flashes the wrong theme
+      try {
+        var saved = JSON.parse(localStorage.getItem("canteen-theme") || "null");
+        var theme = saved && saved.state ? saved.state.theme : null;
+        if (theme === "dark" || (!theme && matchMedia("(prefers-color-scheme: dark)").matches)) {
+          document.documentElement.classList.add("dark");
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
