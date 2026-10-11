@@ -48,6 +48,7 @@ public class WebSecurityConfig {
                         sessionConfig.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/signup", "/auth/login", "/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/public/**").permitAll()
                         .requestMatchers("/admin/**").hasRole(ADMIN.name())
                         .requestMatchers("/profile/**").hasAnyAuthority("profile:read", "profile:write")
                         .requestMatchers("/canteens/**").hasAnyAuthority("canteen:read", "canteen:write", "menu:read", "menu:write", "order:read", "order:write")
