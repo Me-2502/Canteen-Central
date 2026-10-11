@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  --color-forest: #243a30;
+  --color-sage: #c9d6bc;
+  --color-cream: #f1ead8;
+  --color-olive: #5a6638;
+  --font-sans: "Helvetica Neue", Arial, system-ui, sans-serif;
+}
+
+body { @apply bg-white text-forest antialiased; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
